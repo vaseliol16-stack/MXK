@@ -6,6 +6,9 @@
     <meta name="description" content="Сайт Олимпиадного МХК в ЛНИП">
     <meta name="keywords" content="МХК, ЛНИП, Олимпиадное, олимпиада МХК">
     <meta name="author" content="VASELIO L">
+    <!-- Защита от внедрения чужого кода: скрипты только свои, запросы — только к Apps Script -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src https://script.google.com https://script.googleusercontent.com; object-src 'none'; base-uri 'none'; form-action 'none'">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <title>МХК</title>
     <script>
         // Выполняется ДО отрисовки страницы: сразу ставит тему и
@@ -14,7 +17,7 @@
             try {
                 var theme = localStorage.getItem('mxk-theme');
                 if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme;
-                if (localStorage.getItem('mxk-session') || sessionStorage.getItem('mxk-session')) {
+                if (localStorage.getItem('mxk-s3') || sessionStorage.getItem('mxk-s3')) {
                     document.documentElement.classList.add('is-auth');
                 }
             } catch (e) { /* хранилище недоступно */ }
@@ -426,7 +429,7 @@
         .segmented input:focus-visible + span { outline: 2px solid var(--link-hover); outline-offset: 2px; }
 
         /* =====================================================
-           РЕДАКТОР ВОПРОСОВ (видят только «Роль 2» и Root)
+           РЕДАКТОР ТЕСТОВ (видят только Учитель и Root)
            ===================================================== */
         .tests-head {
             display: flex;
@@ -494,8 +497,42 @@
         .content .ed-msg.is-error { color: var(--bad); }
         .ed-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px; }
 
-        .ed-list { list-style: none; display: grid; gap: 8px; }
-        .ed-list li {
+
+        @media (max-width: 600px) {
+            .f-row { grid-template-columns: 1fr; }
+        }
+
+        .tests-tools { display: flex; flex-wrap: wrap; gap: 10px; }
+        .content .tests-status.is-ok { color: var(--ok); }
+        .test-card__actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+        .banner {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+            max-width: 760px;
+            margin-bottom: 14px;
+            padding: 12px 16px;
+            border: 1px solid var(--line);
+            border-left: 4px solid var(--accent);
+            border-radius: 8px;
+            background: var(--sky);
+        }
+        .banner span { flex: 1; min-width: 200px; }
+        .panel__head {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .content .panel__head h2 { margin: 0; }
+        .content .hint { margin: 0 0 6px; font-size: 0.9em; color: var(--muted); }
+
+        /* Список вопросов в редакторе теста */
+        .content .q-list { list-style: none; display: grid; gap: 8px; padding-left: 0; margin: 0; }
+        .q-item {
             display: flex;
             align-items: center;
             gap: 12px;
@@ -503,15 +540,68 @@
             border-radius: 6px;
             background: var(--surface-2);
         }
-        .ed-list img { flex: 0 0 auto; width: 48px; height: 48px; object-fit: cover; border-radius: 4px; }
-        .ed-list__body { flex: 1; min-width: 0; display: grid; gap: 2px; }
-        .ed-list__body span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .ed-list__body small { color: var(--muted); }
-        .ed-list .btn { padding: 6px 12px; }
-
-        @media (max-width: 600px) {
-            .f-row { grid-template-columns: 1fr; }
+        .q-item__num {
+            flex: 0 0 28px;
+            height: 28px;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--line);
+            border-radius: 50%;
+            background: var(--surface);
+            font-size: 0.85em;
+            font-weight: 700;
         }
+        .q-item img { flex: 0 0 auto; width: 48px; height: 48px; object-fit: cover; border-radius: 4px; }
+        .q-item__body { flex: 1; min-width: 0; display: grid; gap: 2px; }
+        .q-item__text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .q-item__body small { color: var(--muted); }
+        .q-item__tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px; }
+        .q-item__tools .btn { padding: 6px 12px; }
+        .icon-btn {
+            width: 34px;
+            height: 34px;
+            display: grid;
+            place-items: center;
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--text);
+            cursor: pointer;
+        }
+        .icon-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.5; }
+        .icon-btn:hover:not(:disabled) { border-color: var(--text); }
+        .icon-btn:disabled { opacity: 0.35; cursor: default; }
+        @media (max-width: 640px) {
+            .q-item { flex-wrap: wrap; }
+            .q-item__tools { width: 100%; }
+        }
+
+        /* Аудио в форме вопроса */
+        .ed-audio { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+        .ed-audio .field { flex: 1; min-width: 200px; }
+        .content .ed-audio__info { margin: 0; font-size: 0.9em; }
+        .content .ed-audio__info:empty { display: none; }
+        #fAudioPreview .player { margin: 4px 0 0; }
+
+        /* Результаты учеников */
+        .res-filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+        .res-filters .field { flex: 1; min-width: 180px; margin: 0; }
+        .content .res-count { margin: 0 0 8px; font-size: 0.85em; color: var(--muted); }
+        .table-wrap { overflow-x: auto; }
+        .res-table { width: 100%; border-collapse: collapse; font-size: 0.92em; }
+        .res-table th,
+        .res-table td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+        .res-table th { color: var(--muted); font-weight: 600; white-space: nowrap; }
+        .res-table td small { display: block; color: var(--muted); }
+        .res-table .is-ok { color: var(--ok); }
+        .res-table .is-bad { color: var(--bad); }
+        .badge { display: inline-block; margin-left: 6px; padding: 1px 6px; border-radius: 4px; font-size: 0.8em; }
+        .badge--bad { background: var(--bad-bg); color: var(--bad); }
+
+        /* Смена пароля */
+        .pw-form { display: grid; gap: 8px; max-width: 360px; }
+        .pw-form .field { margin: 0; }
+        .content .pw-form .ed-msg { margin: 0; }
 
         /* =====================================================
            1. МУЗЫКАЛЬНЫЙ ПЛЕЕР
@@ -1221,7 +1311,7 @@
             </ul>
         </section>
 
-        <!-- Тесты: всё содержимое рисует скрипт, вопросы — в массиве TESTS внизу -->
+        <!-- Тесты: всё содержимое рисует скрипт, вопросы приходят с сервера (лист Tests) -->
         <section id="test" class="page-section">
             <h1>Тесты</h1>
             <div id="testApp"></div>
@@ -1235,7 +1325,7 @@
                     <span class="avatar avatar--big" data-user-initial></span>
                     <div class="profile-head__info">
                         <p class="profile-head__name" data-user-name></p>
-                        <p class="profile-head__role">Роль: <span data-user-role></span></p>
+                        <p class="profile-head__role"><span data-user-login></span> · <span data-user-role></span></p>
                     </div>
                     <button class="btn btn--danger" type="button" id="logoutBtn">Выйти</button>
                 </div>
@@ -1243,6 +1333,17 @@
                 <div class="panel">
                     <h2>Мои результаты</h2>
                     <div id="myResults"></div>
+                </div>
+
+                <div class="panel">
+                    <h2>Смена пароля</h2>
+                    <form class="pw-form" id="pwForm" novalidate>
+                        <input class="field" type="password" name="pwOld" placeholder="Текущий пароль" autocomplete="current-password">
+                        <input class="field" type="password" name="pwNew" placeholder="Новый пароль, от 6 символов" autocomplete="new-password">
+                        <input class="field" type="password" name="pwNew2" placeholder="Повторите новый пароль" autocomplete="new-password">
+                        <p class="ed-msg" id="pwMsg" role="status"></p>
+                        <div><button class="btn btn--primary" type="submit">Сменить пароль</button></div>
+                    </form>
                 </div>
 
                 <div class="panel">
@@ -1421,15 +1522,15 @@
     <script>
         // ===== Настройки =====
         // Адрес веб-приложения Google Apps Script (файл Code.gs)
-        const API_URL = 'https://script.google.com/macros/s/AKfycbyyd4tSgqgSVGaZY207LgdZn8aQzu5oC8CtVxcPMKAMZw6xGi1s62GhEAK75IKXnXwd/exec';
-        const SESSION_KEY = 'mxk-session';
+        const API_URL = 'https://script.google.com/macros/s/AKfycbyCOo9gc6NYiK13F1yexhu5ZFyZGHpLEfnDKSsQbmL58bubXsOi3mZMRvnEpXZr4htO/exec';
+        const SESSION_KEY = 'mxk-s3';
 
         // Ровно три роли. Слева — внутреннее имя, справа — как показывается на сайте
         // и как пишется в столбце «Роль» листа Users.
         const ROLES = {
             user: 'Пользователь',   // проходит тесты
-            editor: 'Роль 2',       // + добавляет вопросы, удаляет свои
-            root: 'Root'            // + удаляет любые вопросы
+            editor: 'Учитель',      // + создаёт и редактирует тесты, видит результаты учеников
+            root: 'Root'            // + удаляет тесты целиком
         };
 
         // ===== Иконки (SVG), чтобы не тянуть картинки =====
@@ -1441,6 +1542,8 @@
             left:  '<svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg>',
             right: '<svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>',
             close: '<svg viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18"/></svg>',
+            up:    '<svg viewBox="0 0 24 24"><path d="M5 15l7-7 7 7"/></svg>',
+            down:  '<svg viewBox="0 0 24 24"><path d="M5 9l7 7 7-7"/></svg>',
             clock: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>'
         };
 
@@ -1512,9 +1615,11 @@
             range.style.setProperty('--fill', pct + '%');
         }
 
-        document.querySelectorAll('audio').forEach(audio => {
+        // Строит плеер вокруг <audio>. Работает и для аудио, которое появляется позже (в вопросах тестов)
+        function makePlayer(audio) {
+            if (audio.closest('.player')) return;
             audio.removeAttribute('controls');
-            audio.preload = 'metadata';
+            if (!audio.hasAttribute('preload')) audio.preload = 'metadata';
 
             const fileName = (audio.getAttribute('src') || '').split(/[\\/]/).pop().replace(/\.[^.]+$/, '');
             const title = audio.dataset.title || fileName.replace(/[_-]+/g, ' ') || 'Аудиозапись';
@@ -1599,7 +1704,8 @@
                 if (!audio.muted && audio.volume === 0) { audio.volume = 0.5; volume.value = 50; setFill(volume); }
                 updateMute();
             });
-        });
+        }
+        document.querySelectorAll('audio').forEach(makePlayer);
 
 
         // =====================================================
@@ -1847,86 +1953,11 @@
             update();
         });
 
-        // Встроенные тесты. Вопросы из листа Tests добавляются к ним после входа
-        const BUILTIN_TESTS = [
-            {
-                title: 'Первобытное искусство',
-                minutes: 10,
-                questions: [
-                    {
-                        type: 'single',
-                        text: 'Какая эпоха датируется примерно 2 млн – 10 тыс. лет до н. э.?',
-                        options: ['Палеолит', 'Мезолит', 'Неолит', 'Энеолит'],
-                        answer: 0
-                    },
-                    {
-                        type: 'single',
-                        text: 'В какой стране находится пещера Ласко?',
-                        options: ['Испания', 'Франция', 'Италия', 'Германия'],
-                        answer: 1,
-                        explain: 'Пещеру Ласко открыли в 1940 году на юго-западе Франции.'
-                    },
-                    {
-                        type: 'single',
-                        text: 'Где находится пещера Альтамира с изображениями бизонов?',
-                        options: ['Во Франции', 'В Испании', 'В Португалии', 'В Австрии'],
-                        answer: 1,
-                        explain: 'Альтамира — в Кантабрии, на севере Испании.'
-                    },
-                    {
-                        type: 'multiple',
-                        text: 'Из каких материалов делали палеолитические статуэтки?',
-                        options: ['Известняк', 'Мамонтовая кость', 'Обожжённая глина', 'Бронза', 'Фарфор'],
-                        answer: [0, 1, 2],
-                        explain: 'Бронза появится только в бронзовом веке, фарфор — намного позже.'
-                    },
-                    {
-                        type: 'text',
-                        text: 'Как называют известняковую статуэтку женщины, найденную в Австрии в 1908 году?',
-                        answer: ['венера виллендорфская', 'виллендорфская венера', 'венера из виллендорфа'],
-                        shown: 'Венера Виллендорфская'
-                    }
-                ]
-            },
-            {
-                title: 'Античность',
-                minutes: 10,
-                questions: [
-                    {
-                        type: 'single',
-                        text: 'Кто автор скульптуры «Дискобол»?',
-                        options: ['Фидий', 'Мирон', 'Поликлет', 'Пракситель'],
-                        answer: 1
-                    },
-                    {
-                        type: 'single',
-                        text: 'Какой богине посвящён Парфенон?',
-                        options: ['Афине', 'Гере', 'Афродите', 'Артемиде'],
-                        answer: 0
-                    },
-                    {
-                        type: 'multiple',
-                        text: 'Какие ордера сложились в архитектуре Древней Греции?',
-                        options: ['Дорический', 'Ионический', 'Коринфский', 'Готический', 'Романский'],
-                        answer: [0, 1, 2]
-                    },
-                    {
-                        type: 'text',
-                        text: 'Как называется постановка фигуры с опорой на одну ногу, при которой линии плеч и бёдер наклонены в разные стороны?',
-                        answer: ['контрапост', 'контрапосто'],
-                        shown: 'Контрапост'
-                    },
-                    {
-                        type: 'single',
-                        text: 'Кто создал «Дорифора» — статую, воплотившую «канон» пропорций?',
-                        options: ['Поликлет', 'Мирон', 'Лисипп', 'Скопас'],
-                        answer: 0
-                    }
-                ]
-            }
-        ];
-        let TESTS = BUILTIN_TESTS.slice();
-
+        // =====================================================
+        // 3. ТЕСТЫ
+        // Вопросы и проверка ответов живут на сервере (лист Tests),
+        // результаты пишутся в лист Results.
+        // =====================================================
         const testApp = (() => {
             const root = document.getElementById('testApp');
             const HINT = {
@@ -1934,13 +1965,21 @@
                 multiple: 'Выберите все верные ответы',
                 text: 'Впишите ответ'
             };
-            let state = null;  // текущее прохождение
-            let view = 'list'; // что сейчас на экране: list / quiz / result / editor
-            let ed = null;     // черновик в редакторе вопросов
-            const remote = { rows: [], status: 'idle', error: '' }; // вопросы из листа Tests
+            const TYPE_LABEL = { single: 'Один ответ', multiple: 'Несколько ответов', text: 'Ответ текстом' };
+            const PENDING_KEY = 'mxk-attempt';
+            const AUDIO_MAX_MB = 15;
 
-            const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-            const norm = s => String(s).toLowerCase().replace(/ё/g, 'е').replace(/[«»"'.,!?]/g, '').replace(/\s+/g, ' ').trim();
+            let view = 'list';        // list / quiz / sending / result / results / testEdit / form
+            let catalog = { status: 'idle', error: '', tests: [], best: {} };
+            let notice = null;        // { text, isError } — сообщение над списком тестов
+            let state = null;         // текущее прохождение
+            let editor = null;        // { title, minutes, questions, isNew }
+            let form = null;          // черновик вопроса
+            let results = { rows: [], test: '', query: '' };
+            let busy = false;         // защита от двойных кликов
+            let previewUrl = null;    // временная ссылка на выбранный аудиофайл
+
+            const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
             const plural = (n, one, few, many) => {
                 const m10 = n % 10, m100 = n % 100;
                 if (m10 === 1 && m100 !== 11) return one;
@@ -1948,17 +1987,174 @@
                 return many;
             };
             const clock = sec => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`;
+            const duration = sec => sec >= 60 ? `${Math.floor(sec / 60)} мин ${sec % 60} с` : `${sec} с`;
+            const isRoot = () => currentRole() === 'root';
 
-            // Лучшие результаты сохраняются в браузере
-            // У каждого ученика свои результаты (если за компьютером сидят по очереди)
-            function saveBest(title, score, total) {
+            // Перед заменой содержимого глушим аудио: отсоединённый <audio> продолжает играть
+            function paint(html) {
+                root.querySelectorAll('audio').forEach(a => a.pause());
+                root.innerHTML = html;
+                root.querySelectorAll('audio').forEach(makePlayer);
+            }
+            const loading = text => paint(`<p class="tests-status">${esc(text)}</p>`);
+
+            function lock(btn, text) {
+                if (busy) return false;
+                busy = true;
+                if (btn) { btn.dataset.label = btn.textContent; btn.disabled = true; if (text) btn.textContent = text; }
+                return true;
+            }
+            function unlock(btn) {
+                busy = false;
+                if (btn && btn.isConnected) { btn.disabled = false; if (btn.dataset.label) btn.textContent = btn.dataset.label; }
+            }
+
+
+            // ===== Каталог тестов =====
+            async function loadCatalog() {
+                catalog.status = 'loading';
+                if (view === 'list') renderList();
                 try {
-                    const best = loadBest();
-                    if (!best[title] || best[title].score < score) {
-                        best[title] = { score, total };
-                        localStorage.setItem(bestKey(), JSON.stringify(best));
-                    }
-                } catch (e) { /* хранилище недоступно — просто не сохраняем */ }
+                    const out = await api('bootstrap');
+                    updateSessionUser(out.user);
+                    catalog = { status: 'ok', error: '', tests: out.tests, best: out.best || {} };
+                } catch (e) {
+                    catalog.status = 'error';
+                    catalog.error = e.message;
+                }
+                if (view === 'list') renderList();
+                if (document.getElementById('profile').classList.contains('active')) renderCabinet();
+            }
+
+            function renderList() {
+                view = 'list';
+                const teach = canEdit();
+                const pending = loadPending();
+                const best = catalog.best;
+
+                let status = '';
+                if (catalog.status === 'loading' && !catalog.tests.length) status = '<p class="tests-status">Загружаем тесты…</p>';
+                if (catalog.status === 'error') status = `<p class="tests-status is-error">${esc(catalog.error)} <button class="link-btn" type="button" data-action="reload">Повторить</button></p>`;
+                const note = notice ? `<p class="tests-status ${notice.isError ? 'is-error' : 'is-ok'}" role="status">${esc(notice.text)}</p>` : '';
+                notice = null;
+
+                const cards = catalog.tests.map((t, i) => {
+                    const b = best[t.title];
+                    return `
+                    <article class="test-card">
+                        <div>
+                            <h3 class="test-card__title">${esc(t.title)}</h3>
+                            <p class="test-card__meta">${t.count} ${plural(t.count, 'вопрос', 'вопроса', 'вопросов')}${t.minutes ? `, ${t.minutes} мин` : ''}</p>
+                            ${b ? `<p class="test-card__best">Лучший результат: ${b.score} из ${b.total} · ${b.attempts} ${plural(b.attempts, 'попытка', 'попытки', 'попыток')}</p>` : ''}
+                        </div>
+                        <div class="test-card__actions">
+                            ${teach ? `<button class="btn btn--ghost" type="button" data-action="edit-test" data-test="${i}">Редактировать</button>` : ''}
+                            <button class="btn btn--primary" type="button" data-action="start" data-test="${i}">Начать тест</button>
+                        </div>
+                    </article>`;
+                }).join('');
+
+                paint(`
+                    <div class="tests-head">
+                        <p>Выберите тест. Ответы можно менять до завершения, а после — посмотреть разбор.</p>
+                        ${teach ? `<div class="tests-tools">
+                            <button class="btn btn--ghost" type="button" data-action="results">Результаты учеников</button>
+                            <button class="btn btn--primary" type="button" data-action="new-test">Новый тест</button>
+                        </div>` : ''}
+                    </div>
+                    ${note}${status}
+                    ${pending ? `<div class="banner">
+                        <span>Есть незавершённый тест «${esc(pending.title)}».</span>
+                        <button class="btn btn--primary" type="button" data-action="resume">Продолжить</button>
+                        <button class="btn btn--ghost" type="button" data-action="drop-pending">Сбросить</button>
+                    </div>` : ''}
+                    <div class="tests-list">
+                        ${cards || (catalog.status === 'ok' ? `<p class="stats-empty">Тестов пока нет.${teach ? ' Нажмите «Новый тест», чтобы создать первый.' : ''}</p>` : '')}
+                    </div>`);
+            }
+
+            function showList(text, isError) {
+                state = null;
+                notice = text ? { text, isError } : null;
+                renderList();
+            }
+
+
+            // ===== Незавершённая попытка (переживает перезагрузку страницы) =====
+            function savePending() {
+                if (!state || state.finished) return;
+                try {
+                    localStorage.setItem(PENDING_KEY, JSON.stringify({
+                        login: currentUser(), attemptId: state.attemptId, title: state.title, minutes: state.minutes,
+                        questions: state.questions, answers: state.answers, current: state.current, deadline: state.deadline
+                    }));
+                } catch (e) { /* хранилище недоступно */ }
+            }
+            function loadPending() {
+                try {
+                    const p = JSON.parse(localStorage.getItem(PENDING_KEY) || 'null');
+                    return p && p.login === currentUser() ? p : null;
+                } catch (e) { return null; }
+            }
+            function clearPending() {
+                try { localStorage.removeItem(PENDING_KEY); } catch (e) {}
+            }
+
+
+            // ===== Прохождение =====
+            async function start(title, btn) {
+                if (!lock(btn, 'Загружаем…')) return;
+                try {
+                    const out = await api('start', { test: title });
+                    clearPending();
+                    state = {
+                        attemptId: out.attemptId,
+                        title: out.title,
+                        minutes: out.minutes,
+                        questions: out.questions,
+                        answers: out.questions.map(q => q.type === 'multiple' ? [] : (q.type === 'text' ? '' : null)),
+                        current: 0,
+                        // Таймер считает от абсолютного времени: не «плывёт» в фоновой вкладке
+                        deadline: out.minutes ? Date.now() + out.minutes * 60000 : 0
+                    };
+                    savePending();
+                    runQuiz();
+                } catch (e) {
+                    if (currentUser()) showList(e.message, true);
+                } finally {
+                    unlock(btn);
+                }
+            }
+
+            function resume() {
+                const p = loadPending();
+                if (!p) return renderList();
+                state = { ...p };
+                if (state.deadline && remaining() <= 0) return finish(true);
+                runQuiz();
+            }
+
+            function runQuiz() {
+                stopTimer();
+                if (state.deadline) state.timer = setInterval(tick, 500);
+                renderQuestion();
+            }
+
+            function remaining() {
+                return Math.max(0, Math.ceil((state.deadline - Date.now()) / 1000));
+            }
+            function tick() {
+                if (!state || !state.deadline) return;
+                const r = remaining();
+                const t = document.getElementById('quizTimer');
+                if (t) {
+                    t.querySelector('span').textContent = clock(r);
+                    t.classList.toggle('is-low', r < 60);
+                }
+                if (r <= 0) finish(true);
+            }
+            function stopTimer() {
+                if (state && state.timer) { clearInterval(state.timer); state.timer = null; }
             }
 
             function isAnswered(i) {
@@ -1966,76 +2162,9 @@
                 return Array.isArray(a) ? a.length > 0 : a !== null && a !== '';
             }
 
-            function isCorrect(q, a) {
-                if (q.type === 'single') return a === q.answer;
-                if (q.type === 'multiple') {
-                    const x = [...a].sort().join(), y = [...q.answer].sort().join();
-                    return x === y;
-                }
-                return a !== '' && q.answer.some(v => norm(v) === norm(a));
-            }
-
-            // ----- Список тестов -----
-            function renderList() {
-                view = 'list';
-                const best = loadBest();
-                let status = '';
-                if (remote.status === 'loading') status = '<p class="tests-status">Загружаем вопросы из таблицы…</p>';
-                if (remote.status === 'error') status = `<p class="tests-status is-error">Вопросы из таблицы не загрузились: ${esc(remote.error)} <button class="link-btn" type="button" data-action="reload">Повторить</button></p>`;
-                root.innerHTML = `
-                    <div class="tests-head">
-                        <p>Выберите тест. Ответы можно менять до завершения, а после — посмотреть разбор.</p>
-                        ${canEdit() ? '<button class="btn btn--primary" type="button" data-action="new">Добавить вопрос</button>' : ''}
-                    </div>
-                    ${status}
-                    <div class="tests-list">
-                        ${TESTS.map((t, i) => {
-                            const n = t.questions.length;
-                            const b = best[t.title];
-                            return `
-                            <article class="test-card">
-                                <div>
-                                    <h3 class="test-card__title">${esc(t.title)}</h3>
-                                    <p class="test-card__meta">${n} ${plural(n, 'вопрос', 'вопроса', 'вопросов')}${t.minutes ? `, ${t.minutes} мин` : ''}</p>
-                                    ${b ? `<p class="test-card__best">Лучший результат: ${b.score} из ${b.total}</p>` : ''}
-                                </div>
-                                <button class="btn btn--primary" type="button" data-action="start" data-test="${i}">Начать тест</button>
-                            </article>`;
-                        }).join('')}
-                    </div>`;
-            }
-
-            // ----- Прохождение ----- Время таймера регулируется в remaining 60 - 10 минут,1 - 10 сек
-            function start(testIndex) {
-                const test = TESTS[testIndex];
-                stopTimer();
-                state = {
-                    testIndex,
-                    test,
-                    current: 0,
-                    answers: test.questions.map(q => q.type === 'multiple' ? [] : (q.type === 'text' ? '' : null)),
-                    remaining: test.minutes * 60
-                };
-                if (test.minutes) state.timer = setInterval(tick, 1000);
-                renderQuestion();
-            }
-
-            function tick() {
-                state.remaining--;
-                const t = document.getElementById('quizTimer');
-                if (t) {
-                    t.querySelector('span').textContent = clock(Math.max(0, state.remaining));
-                    t.classList.toggle('is-low', state.remaining < 60);
-                }
-                if (state.remaining <= 0) finish(true);
-            }
-            function stopTimer() {
-                if (state && state.timer) clearInterval(state.timer);
-            }
-
             function renderInput(q, a) {
                 if (q.type === 'text') {
-                    return `<input class="text-answer" type="text" value="${esc(a)}" placeholder="Ваш ответ" autocomplete="off" aria-label="Ваш ответ">`;
+                    return `<input class="text-answer" type="text" value="${esc(a)}" placeholder="Ваш ответ" autocomplete="off" maxlength="300" aria-label="Ваш ответ">`;
                 }
                 const multi = q.type === 'multiple';
                 return `<div class="options" role="${multi ? 'group' : 'radiogroup'}">
@@ -2050,22 +2179,27 @@
                 </div>`;
             }
 
+            function media(q) {
+                return `${q.image ? `<img class="qcard__img" src="${esc(q.image)}" alt="Иллюстрация к вопросу" decoding="async">` : ''}
+                    ${q.audio ? `<audio src="${esc(q.audio)}" data-title="${esc(q.audioTitle || 'Аудиофрагмент')}" preload="none"></audio>` : ''}`;
+            }
+
             function renderQuestion() {
                 view = 'quiz';
-                const { test, current } = state;
-                const q = test.questions[current];
-                const n = test.questions.length;
+                const { questions, current } = state;
+                const q = questions[current];
+                const n = questions.length;
                 const last = current === n - 1;
 
-                root.innerHTML = `
+                paint(`
                     <div class="quiz">
                         <div class="quiz__head">
-                            <h2 class="quiz__title">${esc(test.title)}</h2>
-                            ${test.minutes ? `<div class="quiz__timer ${state.remaining < 60 ? 'is-low' : ''}" id="quizTimer" aria-label="Осталось времени">${ICON.clock}<span>${clock(state.remaining)}</span></div>` : ''}
+                            <h2 class="quiz__title">${esc(state.title)}</h2>
+                            ${state.deadline ? `<div class="quiz__timer ${remaining() < 60 ? 'is-low' : ''}" id="quizTimer" aria-label="Осталось времени">${ICON.clock}<span>${clock(remaining())}</span></div>` : ''}
                         </div>
                         <div class="quiz__panel">
                             <nav class="quiz__nav" aria-label="Вопросы">
-                                ${test.questions.map((_, i) => `
+                                ${questions.map((_, i) => `
                                     <button type="button" class="qnav ${isAnswered(i) ? 'is-answered' : ''} ${i === current ? 'is-current' : ''}"
                                         data-action="goto" data-q="${i}" aria-label="Вопрос ${i + 1}" ${i === current ? 'aria-current="step"' : ''}>${i + 1}</button>`).join('')}
                             </nav>
@@ -2078,7 +2212,7 @@
                         <section class="qcard">
                             <p class="qcard__num">Вопрос ${current + 1} из ${n}</p>
                             <p class="qcard__text">${esc(q.text)}</p>
-                            ${q.image ? `<img class="qcard__img" src="${esc(q.image)}" alt="Иллюстрация к вопросу">` : ''}
+                            ${media(q)}
                             <p class="qcard__hint">${HINT[q.type]}</p>
                             ${renderInput(q, state.answers[current])}
                         </section>
@@ -2087,287 +2221,525 @@
                             <button class="btn btn--primary" type="button" data-action="${last ? 'finish' : 'next'}">${last ? 'Завершить тест' : 'Следующий вопрос'}</button>
                             ${last ? '' : '<button class="btn btn--danger quiz__finish" type="button" data-action="finish">Завершить тест</button>'}
                         </div>
-                    </div>`;
+                    </div>`);
             }
 
             function goTo(i) {
-                state.current = Math.max(0, Math.min(i, state.test.questions.length - 1));
+                state.current = Math.max(0, Math.min(i, state.questions.length - 1));
+                savePending();
                 renderQuestion();
                 root.scrollIntoView({ block: 'start' });
             }
 
-            // Сохранение ответа без перерисовки (чтобы не терять фокус в поле ввода)
+            // Ответ сохраняется без перерисовки, чтобы не терять фокус в поле ввода
             function saveAnswer(target) {
-                const q = state.test.questions[state.current];
+                const q = state.questions[state.current];
                 if (q.type === 'text') state.answers[state.current] = target.value;
                 else if (q.type === 'single') state.answers[state.current] = Number(target.value);
-                else {
-                    state.answers[state.current] = [...root.querySelectorAll('input[name="answer"]:checked')].map(i => Number(i.value));
-                }
+                else state.answers[state.current] = [...root.querySelectorAll('input[name="answer"]:checked')].map(i => Number(i.value));
                 const tile = root.querySelector(`.qnav[data-q="${state.current}"]`);
                 if (tile) tile.classList.toggle('is-answered', isAnswered(state.current));
+                savePending();
             }
 
-            function askFinish() {
-                const n = state.test.questions.length;
-                const done = state.test.questions.filter((_, i) => isAnswered(i)).length;
+            function confirmBox(title, text, okText, onOk) {
                 const modal = document.createElement('div');
                 modal.className = 'modal';
                 modal.innerHTML = `
                     <div class="modal__box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
-                        <h3 class="modal__title" id="modalTitle">Завершить тест?</h3>
-                        <p class="modal__text">Вы ответили на ${done} из ${n} ${plural(n, 'вопроса', 'вопросов', 'вопросов')}.
-                        ${done < n ? 'Вопросы без ответа будут засчитаны как неверные.' : 'После завершения ответы изменить нельзя.'}</p>
+                        <h3 class="modal__title" id="modalTitle">${esc(title)}</h3>
+                        <p class="modal__text">${esc(text)}</p>
                         <div class="modal__actions">
-                            <button class="btn btn--ghost" type="button" data-modal="cancel">Вернуться к тесту</button>
-                            <button class="btn btn--primary" type="button" data-modal="ok">Завершить</button>
+                            <button class="btn btn--ghost" type="button" data-modal="cancel">Отмена</button>
+                            <button class="btn btn--primary" type="button" data-modal="ok">${esc(okText)}</button>
                         </div>
                     </div>`;
                 root.appendChild(modal);
                 modal.querySelector('[data-modal="ok"]').focus();
-                const closeModal = () => { modal.remove(); document.removeEventListener('keydown', onKey); };
-                const onKey = e => { if (e.key === 'Escape') closeModal(); };
+                const close = () => { modal.remove(); document.removeEventListener('keydown', onKey); };
+                const onKey = e => { if (e.key === 'Escape') close(); };
                 document.addEventListener('keydown', onKey);
                 modal.addEventListener('click', e => {
                     const b = e.target.closest('[data-modal]');
-                    if (e.target === modal || (b && b.dataset.modal === 'cancel')) closeModal();
-                    else if (b && b.dataset.modal === 'ok') { closeModal(); finish(false); }
+                    if (e.target === modal || (b && b.dataset.modal === 'cancel')) close();
+                    else if (b && b.dataset.modal === 'ok') { close(); onOk(); }
                 });
             }
 
-            // ----- Результат -----
+            function askFinish() {
+                const n = state.questions.length;
+                const done = state.questions.filter((_, i) => isAnswered(i)).length;
+                confirmBox('Завершить тест?',
+                    `Вы ответили на ${done} из ${n} ${plural(n, 'вопроса', 'вопросов', 'вопросов')}. ` +
+                    (done < n ? 'Вопросы без ответа будут засчитаны как неверные.' : 'После завершения ответы изменить нельзя.'),
+                    'Завершить', () => finish(false));
+            }
+
+            async function finish(timeUp) {
+                if (!state || state.sending) return;
+                stopTimer();
+                state.sending = true;
+                state.timeUp = state.timeUp || timeUp;
+                view = 'sending';
+                const answers = {};
+                state.questions.forEach((q, i) => { answers[q.id] = state.answers[i]; });
+                loading((state.timeUp ? 'Время вышло. ' : '') + 'Проверяем ответы…');
+                try {
+                    const out = await api('submit', { attemptId: state.attemptId, answers });
+                    clearPending();
+                    state.finished = true;
+                    state.result = out;
+                    const b = catalog.best[state.title] || { score: -1, total: out.total, attempts: 0 };
+                    b.attempts++;
+                    if (out.score > b.score) { b.score = out.score; b.total = out.total; }
+                    catalog.best[state.title] = b;
+                    renderResult();
+                } catch (e) {
+                    if (!currentUser() || !state) return; // сессия закончилась — ответы ждут в браузере
+                    paint(`<div class="panel">
+                        <p class="tests-status is-error">Не удалось отправить ответы: ${esc(e.message)}</p>
+                        <p>Ответы сохранены в браузере — их можно отправить ещё раз.</p>
+                        <div class="ed-actions">
+                            <button class="btn btn--ghost" type="button" data-action="list">К списку тестов</button>
+                            <button class="btn btn--primary" type="button" data-action="retry-submit">Отправить ещё раз</button>
+                        </div>
+                    </div>`);
+                } finally {
+                    if (state) state.sending = false;
+                }
+            }
+
             function describe(q, a) {
                 if (q.type === 'text') return a === '' ? '—' : esc(a);
                 if (q.type === 'single') return a === null ? '—' : esc(q.options[a]);
                 return a.length ? a.map(i => esc(q.options[i])).join(', ') : '—';
             }
-            function rightAnswer(q) {
-                if (q.type === 'text') return esc(q.shown || q.answer[0]);
-                if (q.type === 'single') return esc(q.options[q.answer]);
-                return q.answer.map(i => esc(q.options[i])).join(', ');
+            function rightAnswer(q, correct) {
+                if (q.type === 'text') return esc(correct);
+                if (q.type === 'single') return esc(q.options[correct]);
+                return correct.map(i => esc(q.options[i])).join(', ');
             }
 
-            function finish(timeUp) {
-                stopTimer();
+            function renderResult() {
                 view = 'result';
-                const { test, answers } = state;
-                const results = test.questions.map((q, i) => isCorrect(q, answers[i]));
-                const score = results.filter(Boolean).length;
-                const total = results.length;
-                const pct = Math.round(score / total * 100);
-                saveBest(test.title, score, total);
+                const out = state.result;
+                const byId = {};
+                out.review.forEach(r => { byId[r.id] = r; });
+                const items = state.questions.map((q, i) => ({ q, a: state.answers[i], r: byId[q.id] })).filter(x => x.r);
+                const pct = out.total ? Math.round(out.score / out.total * 100) : 0;
 
                 let verdict = 'Стоит повторить материал';
                 if (pct >= 85) verdict = 'Отличный результат';
                 else if (pct >= 60) verdict = 'Хороший результат';
                 else if (pct >= 40) verdict = 'Есть над чем поработать';
 
-                root.innerHTML = `
+                paint(`
                     <div class="result">
                         <div class="result__head">
                             <div class="result__score">
-                                <span class="result__big">${score}</span>
-                                <span class="result__of">из ${total}</span>
+                                <span class="result__big">${out.score}</span>
+                                <span class="result__of">из ${out.total}</span>
                             </div>
                             <div>
-                                <h2 class="result__title">${esc(test.title)}</h2>
-                                <p class="result__verdict">${verdict}: ${pct}% верных ответов.${timeUp ? ' Время вышло, тест завершён автоматически.' : ''}</p>
+                                <h2 class="result__title">${esc(state.title)}</h2>
+                                <p class="result__verdict">${verdict}: ${pct}% верных ответов. Время: ${duration(out.seconds)}.
+                                ${state.timeUp ? ' Время вышло, тест завершён автоматически.' : ''}
+                                ${out.late ? ' Отведённое время превышено — учитель увидит это в результатах.' : ''}</p>
                             </div>
                         </div>
                         <div class="result__bar"><span style="width:${pct}%"></span></div>
                         <ol class="review">
-                            ${test.questions.map((q, i) => `
-                                <li class="review__item ${results[i] ? 'is-ok' : 'is-bad'}">
+                            ${items.map(({ q, a, r }, i) => `
+                                <li class="review__item ${r.ok ? 'is-ok' : 'is-bad'}">
                                     <p class="review__q">${i + 1}. ${esc(q.text)}</p>
-                                    <p class="review__line review__yours"><b>Ваш ответ:</b> ${describe(q, answers[i])}</p>
-                                    ${results[i] ? '' : `<p class="review__line review__right"><b>Правильный ответ:</b> ${rightAnswer(q)}</p>`}
-                                    ${q.explain ? `<p class="review__explain">${esc(q.explain)}</p>` : ''}
+                                    <p class="review__line review__yours"><b>Ваш ответ:</b> ${describe(q, a)}</p>
+                                    ${r.ok ? '' : `<p class="review__line review__right"><b>Правильный ответ:</b> ${rightAnswer(q, r.correct)}</p>`}
+                                    ${r.explain ? `<p class="review__explain">${esc(r.explain)}</p>` : ''}
                                 </li>`).join('')}
                         </ol>
                         <div class="quiz__actions">
                             <button class="btn btn--primary" type="button" data-action="restart">Пройти ещё раз</button>
                             <button class="btn btn--ghost" type="button" data-action="list">К списку тестов</button>
                         </div>
-                    </div>`;
-                state.finished = true;
+                    </div>`);
             }
 
 
-            // =====================================================
-            // Вопросы из таблицы и редактор
-            // =====================================================
-            const TYPE_LABEL = { single: 'Один ответ', multiple: 'Несколько ответов', text: 'Ответ текстом' };
-
-            function canEdit() { return currentRole() === 'editor' || currentRole() === 'root'; }
-            function canDelete(row) {
-                return currentRole() === 'root' || (currentRole() === 'editor' && row.author === currentUser());
-            }
-
-            // Встроенные тесты + строки листа Tests (по совпадению названия теста)
-            function buildTests(rows) {
-                const tests = BUILTIN_TESTS.map(t => ({ ...t, questions: t.questions.slice() }));
-                rows.forEach(r => {
-                    let t = tests.find(x => x.title.toLowerCase() === r.test.toLowerCase());
-                    if (!t) {
-                        t = { title: r.test, minutes: r.minutes || 0, questions: [] };
-                        tests.push(t);
-                    }
-                    t.questions.push(r);
-                });
-                return tests;
-            }
-
-            async function loadRemote() {
-                remote.status = 'loading';
-                if (view === 'list') renderList();
+            // ===== Результаты учеников (Учитель и Root) =====
+            async function openResults() {
+                view = 'results';
+                loading('Загружаем результаты…');
                 try {
-                    const out = await api('tests');
-                    remote.rows = out.rows;
-                    TESTS = buildTests(out.rows);
-                    remote.status = 'ok';
-                } catch (err) {
-                    remote.status = 'error';
-                    remote.error = err.message;
-                }
-                if (view === 'list') renderList();
-            }
-
-            function freshDraft(prev) {
-                return {
-                    test: prev ? prev.test : '',
-                    minutes: prev ? prev.minutes : 10,
-                    type: prev ? prev.type : 'single',
-                    text: '', explain: '', textAns: '',
-                    options: ['', '', '', ''],
-                    correct: [0],
-                    image: null
-                };
-            }
-
-            function optionRow(text, i) {
-                const multi = ed.type === 'multiple';
-                return `<div class="ed-opt">
-                    <input type="${multi ? 'checkbox' : 'radio'}" name="edCorrect" value="${i}" ${ed.correct.includes(i) ? 'checked' : ''} aria-label="Вариант ${i + 1} правильный">
-                    <input class="field ed-opt__text" type="text" value="${esc(text)}" placeholder="Вариант ${i + 1}">
-                    <button class="ed-opt__del" type="button" data-action="del-option" data-i="${i}" aria-label="Удалить вариант ${i + 1}" ${ed.options.length <= 2 ? 'disabled' : ''}>${ICON.close}</button>
-                </div>`;
-            }
-            function renderOptions() {
-                root.querySelector('#edOptions').innerHTML = ed.options.map(optionRow).join('');
-            }
-
-            // Переносит всё, что введено в форме, в черновик ed
-            function collectForm() {
-                const val = id => { const el = root.querySelector(id); return el ? el.value : ''; };
-                ed.test = val('#edTest');
-                ed.minutes = val('#edMinutes');
-                ed.text = val('#edText');
-                ed.explain = val('#edExplain');
-                ed.textAns = val('#edTextAns');
-                const texts = root.querySelectorAll('.ed-opt__text');
-                if (texts.length) {
-                    ed.options = [...texts].map(i => i.value);
-                    ed.correct = [...root.querySelectorAll('input[name="edCorrect"]')]
-                        .map((c, i) => c.checked ? i : -1).filter(i => i >= 0);
+                    const out = await api('results');
+                    if (view !== 'results') return;
+                    results = { rows: out.rows, test: '', query: '' };
+                    renderResults();
+                } catch (e) {
+                    if (currentUser()) showList(e.message, true);
                 }
             }
 
-            function setMsg(text, isError) {
-                const m = root.querySelector('#edMsg');
+            function renderResults() {
+                const tests = [...new Set(results.rows.map(r => r.test))].sort((a, b) => a.localeCompare(b, 'ru'));
+                paint(`
+                    <div class="editor">
+                        <div><button class="link-btn" type="button" data-action="list">← Все тесты</button></div>
+                        <div class="panel">
+                            <div class="panel__head">
+                                <h2>Результаты учеников</h2>
+                                <button class="btn btn--ghost" type="button" data-action="results">Обновить</button>
+                            </div>
+                            <div class="res-filters">
+                                <select class="field" id="resTest" aria-label="Тест">
+                                    <option value="">Все тесты</option>
+                                    ${tests.map(t => `<option value="${esc(t)}" ${t === results.test ? 'selected' : ''}>${esc(t)}</option>`).join('')}
+                                </select>
+                                <input class="field" id="resQuery" type="search" placeholder="Поиск по имени или логину" value="${esc(results.query)}">
+                            </div>
+                            <div id="resTable"></div>
+                        </div>
+                    </div>`);
+                renderResultsTable();
+            }
+
+            function renderResultsTable() {
+                const q = results.query.trim().toLowerCase();
+                const rows = results.rows.filter(r =>
+                    (!results.test || r.test === results.test) &&
+                    (!q || r.name.toLowerCase().includes(q) || r.login.toLowerCase().includes(q)));
+                const box = root.querySelector('#resTable');
+                if (!rows.length) { box.innerHTML = '<p class="stats-empty">Результатов пока нет.</p>'; return; }
+                box.innerHTML = `
+                    <p class="res-count">Показано: ${Math.min(rows.length, 300)} из ${rows.length}</p>
+                    <div class="table-wrap">
+                        <table class="res-table">
+                            <thead><tr><th>Дата</th><th>Ученик</th><th>Тест</th><th>Баллы</th><th>Время</th></tr></thead>
+                            <tbody>
+                                ${rows.slice(0, 300).map(r => {
+                                    const pct = r.total ? Math.round(r.score / r.total * 100) : 0;
+                                    return `<tr>
+                                        <td>${esc(r.date)}</td>
+                                        <td>${esc(r.name)}<small>${esc(r.login)}</small></td>
+                                        <td>${esc(r.test)}</td>
+                                        <td><b class="${pct >= 60 ? 'is-ok' : 'is-bad'}">${r.score} из ${r.total}</b></td>
+                                        <td>${duration(r.seconds)}${r.late ? '<span class="badge badge--bad">превышено</span>' : ''}</td>
+                                    </tr>`;
+                                }).join('')}
+                            </tbody>
+                        </table>
+                    </div>`;
+            }
+
+
+            // ===== Редактор теста (Учитель и Root) =====
+            async function openTestEditor(title, message, isError) {
+                view = 'testEdit';
+                loading('Загружаем тест…');
+                try {
+                    const out = await api('editorTest', { test: title });
+                    if (view !== 'testEdit') return;
+                    editor = { title: out.title, minutes: out.minutes, questions: out.questions, isNew: !out.questions.length };
+                    renderTestEditor(message, isError);
+                } catch (e) {
+                    if (currentUser()) showList(e.message, true);
+                }
+            }
+
+            function renderTestEditor(message, isError) {
+                view = 'testEdit';
+                const e = editor;
+                const n = e.questions.length;
+                paint(`
+                    <div class="editor">
+                        <div><button class="link-btn" type="button" data-action="list">← Все тесты</button></div>
+
+                        <div class="panel">
+                            <h2>${e.isNew ? 'Новый тест' : 'Настройки теста'}</h2>
+                            <div class="f-row">
+                                <label class="f"><span>Название</span>
+                                    <input class="field" id="tTitle" maxlength="100" value="${esc(e.title)}" placeholder="Например, Барокко">
+                                </label>
+                                <label class="f"><span>Время, мин</span>
+                                    <input class="field" id="tMinutes" type="number" min="0" max="180" value="${e.minutes || 0}">
+                                    <small>0 — без таймера</small>
+                                </label>
+                            </div>
+                            ${e.isNew
+                                ? '<p class="hint">Тест появится в списке, когда в нём будет сохранён первый вопрос.</p>'
+                                : `<div class="ed-actions">
+                                    ${isRoot() ? '<button class="btn btn--danger" type="button" data-action="delete-test">Удалить тест</button>' : ''}
+                                    <button class="btn btn--primary" type="button" data-action="save-test">Сохранить настройки</button>
+                                </div>`}
+                            <p class="ed-msg ${isError ? 'is-error' : 'is-ok'}" id="tMsg" role="status">${message ? esc(message) : ''}</p>
+                        </div>
+
+                        <div class="panel">
+                            <div class="panel__head">
+                                <h2>Вопросы${n ? ` (${n})` : ''}</h2>
+                                <button class="btn btn--primary" type="button" data-action="new-q">Добавить вопрос</button>
+                            </div>
+                            ${n ? `<ol class="q-list">${e.questions.map((q, i) => `
+                                <li class="q-item">
+                                    <span class="q-item__num">${i + 1}</span>
+                                    ${q.image ? `<img src="${esc(q.image)}" alt="" loading="lazy">` : ''}
+                                    <div class="q-item__body">
+                                        <span class="q-item__text">${esc(q.text)}</span>
+                                        <small>${TYPE_LABEL[q.type]}${q.audio ? ' · с аудио' : ''}${q.author ? ' · автор: ' + esc(q.author) : ''}</small>
+                                    </div>
+                                    <div class="q-item__tools">
+                                        <button class="icon-btn" type="button" data-action="move-q" data-dir="-1" data-id="${esc(q.id)}" aria-label="Поднять вопрос ${i + 1}" ${i === 0 ? 'disabled' : ''}>${ICON.up}</button>
+                                        <button class="icon-btn" type="button" data-action="move-q" data-dir="1" data-id="${esc(q.id)}" aria-label="Опустить вопрос ${i + 1}" ${i === n - 1 ? 'disabled' : ''}>${ICON.down}</button>
+                                        <button class="btn btn--ghost" type="button" data-action="edit-q" data-id="${esc(q.id)}">Изменить</button>
+                                        <button class="btn btn--danger" type="button" data-action="del-q" data-id="${esc(q.id)}">Удалить</button>
+                                    </div>
+                                </li>`).join('')}</ol>`
+                            : '<p class="stats-empty">Вопросов пока нет.</p>'}
+                        </div>
+                    </div>`);
+            }
+
+            function setMsg(id, text, isError) {
+                const m = root.querySelector('#' + id);
                 if (!m) return;
                 m.textContent = text;
                 m.className = 'ed-msg ' + (isError ? 'is-error' : 'is-ok');
             }
 
-            function renderEditor(message, isError) {
-                if (!canEdit()) return renderList();
-                view = 'editor';
-                if (!ed) ed = freshDraft();
-                const titles = [...new Set(TESTS.map(t => t.title))];
-                const rows = remote.rows.filter(canDelete);
-                const isRoot = currentRole() === 'root';
+            function readTestSettings() {
+                editor.draftTitle = root.querySelector('#tTitle').value.trim();
+                editor.minutes = Math.max(0, Math.min(180, Math.round(Number(root.querySelector('#tMinutes').value) || 0)));
+            }
 
-                root.innerHTML = `
+            async function saveTest(btn) {
+                readTestSettings();
+                if (!editor.draftTitle) return setMsg('tMsg', 'Название не может быть пустым.', true);
+                if (!lock(btn, 'Сохраняем…')) return;
+                try {
+                    const out = await api('updateTest', { test: editor.title, title: editor.draftTitle, minutes: editor.minutes });
+                    editor.title = out.title;
+                    setMsg('tMsg', 'Настройки сохранены.');
+                    loadCatalog();
+                } catch (e) {
+                    setMsg('tMsg', e.message, true);
+                } finally {
+                    unlock(btn);
+                }
+            }
+
+            function deleteTest() {
+                confirmBox('Удалить тест целиком?',
+                    `Будут удалены все вопросы теста «${editor.title}» и их файлы. Результаты учеников останутся в таблице.`,
+                    'Удалить', async () => {
+                        if (!lock()) return;
+                        try {
+                            await api('deleteTest', { test: editor.title });
+                            await loadCatalog();
+                            showList(`Тест «${editor.title}» удалён.`);
+                        } catch (e) {
+                            setMsg('tMsg', e.message, true);
+                        } finally {
+                            unlock();
+                        }
+                    });
+            }
+
+            async function moveQuestion(id, dir) {
+                if (!lock()) return;
+                try {
+                    await api('moveQuestion', { id, dir });
+                    const list = editor.questions;
+                    const i = list.findIndex(q => q.id === id);
+                    const j = i + dir;
+                    if (i >= 0 && j >= 0 && j < list.length) [list[i], list[j]] = [list[j], list[i]];
+                    renderTestEditor();
+                } catch (e) {
+                    setMsg('tMsg', e.message, true);
+                } finally {
+                    unlock();
+                }
+            }
+
+            function deleteQuestion(id) {
+                const q = editor.questions.find(x => x.id === id);
+                if (!q) return;
+                confirmBox('Удалить вопрос?', `«${q.text.slice(0, 120)}»`, 'Удалить', async () => {
+                    if (!lock()) return;
+                    try {
+                        await api('deleteQuestion', { id });
+                        editor.questions = editor.questions.filter(x => x.id !== id);
+                        if (!editor.questions.length) editor.isNew = true;
+                        renderTestEditor('Вопрос удалён.');
+                        loadCatalog();
+                    } catch (e) {
+                        setMsg('tMsg', e.message, true);
+                    } finally {
+                        unlock();
+                    }
+                });
+            }
+
+
+            // ===== Форма вопроса =====
+            function openForm(q) {
+                if (editor.isNew) {
+                    readTestSettings();
+                    if (!editor.draftTitle) return setMsg('tMsg', 'Сначала введите название теста.', true);
+                    const same = catalog.tests.find(t => t.title.toLowerCase() === editor.draftTitle.toLowerCase());
+                    if (same) return openTestEditor(same.title, 'Такой тест уже есть — новые вопросы добавятся в него.');
+                    editor.title = editor.draftTitle;
+                }
+                form = q ? {
+                    id: q.id,
+                    type: q.type,
+                    text: q.text,
+                    explain: q.explain || '',
+                    options: q.type === 'text' ? ['', '', '', ''] : q.options.slice(),
+                    correct: q.type === 'text' ? [0] : (q.type === 'single' ? [q.answer] : q.answer.slice()),
+                    textAns: q.type === 'text' ? q.answer.join('; ') : '',
+                    image: q.image ? { url: q.image } : null,
+                    imageChanged: false,
+                    audioUrl: q.audio || '',
+                    audioFile: null,
+                    audioTitle: q.audioTitle || ''
+                } : {
+                    id: null, type: 'single', text: '', explain: '',
+                    options: ['', '', '', ''], correct: [0], textAns: '',
+                    image: null, imageChanged: false, audioUrl: '', audioFile: null, audioTitle: ''
+                };
+                renderForm();
+            }
+
+            function optionRow(text, i) {
+                const multi = form.type === 'multiple';
+                return `<div class="ed-opt">
+                    <input type="${multi ? 'checkbox' : 'radio'}" name="fCorrect" value="${i}" ${form.correct.includes(i) ? 'checked' : ''} aria-label="Вариант ${i + 1} правильный">
+                    <input class="field ed-opt__text" type="text" maxlength="300" value="${esc(text)}" placeholder="Вариант ${i + 1}">
+                    <button class="ed-opt__del" type="button" data-action="del-option" data-i="${i}" aria-label="Удалить вариант ${i + 1}" ${form.options.length <= 2 ? 'disabled' : ''}>${ICON.close}</button>
+                </div>`;
+            }
+            function renderOptions() {
+                root.querySelector('#fOptions').innerHTML = form.options.map(optionRow).join('');
+                root.querySelector('[data-action="add-option"]').disabled = form.options.length >= 12;
+            }
+
+            function audioInfo() {
+                if (form.audioFile) {
+                    return `Файл: ${esc(form.audioFile.name)} (${(form.audioFile.size / 1048576).toFixed(1).replace('.', ',')} МБ)
+                        <button class="link-btn" type="button" data-action="clear-audio-file">убрать</button>`;
+                }
+                return '';
+            }
+
+            function renderAudioPreview() {
+                const box = root.querySelector('#fAudioPreview');
+                if (!box) return;
+                box.querySelectorAll('audio').forEach(a => a.pause());
+                if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+                let src = '';
+                if (form.audioFile) src = previewUrl = URL.createObjectURL(form.audioFile);
+                else if (form.audioUrl && validAudioUrl(form.audioUrl)) src = form.audioUrl;
+                box.innerHTML = '';
+                if (!src) return;
+                const audio = document.createElement('audio');
+                audio.src = src;
+                audio.preload = 'none';
+                audio.dataset.title = form.audioTitle || 'Проверка звука';
+                box.appendChild(audio);
+                makePlayer(audio);
+            }
+
+            function renderForm(message, isError) {
+                view = 'form';
+                paint(`
                     <div class="editor">
+                        <div><button class="link-btn" type="button" data-action="back-to-test">← К тесту «${esc(editor.title)}»</button></div>
                         <div class="panel">
-                            <h2>Новый вопрос</h2>
-                            <div class="f-row">
-                                <label class="f"><span>Тест</span>
-                                    <input class="field" id="edTest" list="edTests" value="${esc(ed.test)}" placeholder="Существующий или новый тест">
-                                    <datalist id="edTests">${titles.map(t => `<option value="${esc(t)}">`).join('')}</datalist>
-                                </label>
-                                <label class="f"><span>Время, мин</span>
-                                    <input class="field" id="edMinutes" type="number" min="0" max="180" value="${esc(ed.minutes)}">
-                                    <small>Для нового теста, 0 — без таймера</small>
-                                </label>
-                            </div>
+                            <h2>${form.id ? 'Изменить вопрос' : 'Новый вопрос'}</h2>
 
                             <div class="f"><span>Тип вопроса</span>
                                 <div class="segmented" role="radiogroup" aria-label="Тип вопроса">
-                                    ${Object.keys(TYPE_LABEL).map(k => `<label><input type="radio" name="edType" value="${k}" ${ed.type === k ? 'checked' : ''}><span>${TYPE_LABEL[k]}</span></label>`).join('')}
+                                    ${Object.keys(TYPE_LABEL).map(k => `<label><input type="radio" name="fType" value="${k}" ${form.type === k ? 'checked' : ''}><span>${TYPE_LABEL[k]}</span></label>`).join('')}
                                 </div>
                             </div>
 
                             <label class="f"><span>Текст вопроса</span>
-                                <textarea class="field" id="edText" rows="3">${esc(ed.text)}</textarea>
+                                <textarea class="field" id="fText" rows="3" maxlength="1500">${esc(form.text)}</textarea>
                             </label>
 
                             <div class="f"><span>Картинка <small>(необязательно)</small></span>
                                 <div class="ed-image">
-                                    <label class="btn btn--ghost ed-file"><input class="sr" type="file" id="edImage" accept="image/*">Выбрать картинку</label>
-                                    <img id="edPreview" alt="Выбранная картинка" ${ed.image ? `src="${ed.image.preview}"` : 'hidden'}>
-                                    <button class="btn btn--ghost" type="button" data-action="clear-image" ${ed.image ? '' : 'hidden'}>Убрать</button>
+                                    <label class="btn btn--ghost ed-file"><input class="sr" type="file" id="fImage" accept="image/*">${form.image ? 'Заменить картинку' : 'Выбрать картинку'}</label>
+                                    <img id="fImagePreview" alt="Выбранная картинка" ${form.image ? `src="${esc(form.image.preview || form.image.url)}"` : 'hidden'}>
+                                    <button class="btn btn--ghost" type="button" data-action="clear-image" ${form.image ? '' : 'hidden'}>Убрать</button>
                                 </div>
                             </div>
 
-                            <div class="f" id="edOptionsWrap" ${ed.type === 'text' ? 'hidden' : ''}>
+                            <div class="f"><span>Музыка или аудио <small>(необязательно)</small></span>
+                                <div class="ed-audio">
+                                    <label class="btn btn--ghost ed-file"><input class="sr" type="file" id="fAudioFile" accept="audio/*">Загрузить файл</label>
+                                    <input class="field" id="fAudioUrl" value="${esc(form.audioUrl)}" placeholder="или ссылка: music/1.mp3 или https://…" ${form.audioFile ? 'hidden' : ''}>
+                                </div>
+                                <p class="ed-audio__info" id="fAudioInfo">${audioInfo()}</p>
+                                <input class="field" id="fAudioTitle" maxlength="150" value="${esc(form.audioTitle)}" placeholder="Название трека, например: Бах — Токката и фуга ре минор">
+                                <small>Файл до ${AUDIO_MAX_MB} МБ (MP3, M4A, OGG, WAV) сохранится на Google Диск. Надёжнее всего — положить MP3 в папку music сайта и указать путь.</small>
+                                <div id="fAudioPreview"></div>
+                            </div>
+
+                            <div class="f" id="fOptionsWrap" ${form.type === 'text' ? 'hidden' : ''}>
                                 <span>Варианты ответа</span>
                                 <small>Отметьте правильные кружком или галочкой слева</small>
-                                <div id="edOptions"></div>
+                                <div id="fOptions"></div>
                                 <div><button class="btn btn--ghost" type="button" data-action="add-option">Добавить вариант</button></div>
                             </div>
 
-                            <label class="f" id="edTextWrap" ${ed.type === 'text' ? '' : 'hidden'}><span>Правильные ответы</span>
-                                <input class="field" id="edTextAns" value="${esc(ed.textAns)}" placeholder="контрапост; контрапосто">
-                                <small>Несколько вариантов написания — через точку с запятой. Регистр и «ё» не важны.</small>
+                            <label class="f" id="fTextWrap" ${form.type === 'text' ? '' : 'hidden'}><span>Правильные ответы</span>
+                                <input class="field" id="fTextAns" maxlength="1000" value="${esc(form.textAns)}" placeholder="контрапост; контрапосто">
+                                <small>Несколько вариантов написания — через точку с запятой. Регистр, «ё» и знаки препинания не важны. Первый вариант покажется ученику в разборе.</small>
                             </label>
 
                             <label class="f"><span>Пояснение <small>(необязательно)</small></span>
-                                <textarea class="field" id="edExplain" rows="2" placeholder="Покажется в разборе после теста">${esc(ed.explain)}</textarea>
+                                <textarea class="field" id="fExplain" rows="2" maxlength="1500" placeholder="Покажется в разборе после теста">${esc(form.explain)}</textarea>
                             </label>
 
-                            <p class="ed-msg ${isError ? 'is-error' : 'is-ok'}" id="edMsg" role="status">${message ? esc(message) : ''}</p>
+                            <p class="ed-msg ${isError ? 'is-error' : 'is-ok'}" id="fMsg" role="status">${message ? esc(message) : ''}</p>
                             <div class="ed-actions">
-                                <button class="btn btn--ghost" type="button" data-action="list">К списку тестов</button>
-                                <button class="btn btn--primary" type="button" data-action="save-q" id="edSave">Сохранить вопрос</button>
+                                <button class="btn btn--ghost" type="button" data-action="back-to-test">Отмена</button>
+                                <button class="btn btn--primary" type="button" data-action="save-q" id="fSave">Сохранить вопрос</button>
                             </div>
                         </div>
-
-                        <div class="panel">
-                            <h2>${isRoot ? 'Все вопросы из таблицы' : 'Мои вопросы'}</h2>
-                            ${rows.length ? `<ul class="ed-list">${rows.map(r => `
-                                <li>
-                                    ${r.image ? `<img src="${esc(r.image)}" alt="">` : ''}
-                                    <div class="ed-list__body">
-                                        <b>${esc(r.test)}</b>
-                                        <span>${esc(r.text)}</span>
-                                        ${isRoot ? `<small>Автор: ${esc(r.author || '—')}</small>` : ''}
-                                    </div>
-                                    <button class="btn btn--danger" type="button" data-action="delete-q" data-id="${esc(r.id)}">Удалить</button>
-                                </li>`).join('')}</ul>`
-                            : '<p class="stats-empty">Пока нет вопросов.</p>'}
-                        </div>
-                    </div>`;
-                if (ed.type !== 'text') renderOptions();
+                    </div>`);
+                if (form.type !== 'text') renderOptions();
+                renderAudioPreview();
             }
 
-            // Уменьшает фото до 1280 px по длинной стороне и переводит в JPEG
+            function collectForm() {
+                const val = id => { const el = root.querySelector(id); return el ? el.value : ''; };
+                form.text = val('#fText');
+                form.explain = val('#fExplain');
+                form.textAns = val('#fTextAns');
+                form.audioUrl = val('#fAudioUrl').trim();
+                form.audioTitle = val('#fAudioTitle');
+                const texts = root.querySelectorAll('.ed-opt__text');
+                if (texts.length) {
+                    form.options = [...texts].map(i => i.value);
+                    form.correct = [...root.querySelectorAll('input[name="fCorrect"]')]
+                        .map((c, i) => c.checked ? i : -1).filter(i => i >= 0);
+                }
+            }
+
+            // Как и на сервере: https://… или путь внутри сайта
+            function validAudioUrl(s) {
+                return /^https:\/\/[^\s"'<>\\]+$/i.test(s) || /^(?!\/\/)(?!.*\.\.)[\w\-./%]+$/.test(s);
+            }
+
+            // Фото уменьшается до 1600 px по длинной стороне и сохраняется в JPEG
             function readImage(file) {
                 return new Promise((resolve, reject) => {
+                    if (!/^image\//.test(file.type)) return reject(new Error('Это не картинка.'));
                     const url = URL.createObjectURL(file);
                     const img = new Image();
                     img.onload = () => {
-                        const k = Math.min(1, 1280 / Math.max(img.width, img.height));
+                        const k = Math.min(1, 1600 / Math.max(img.width, img.height));
                         const c = document.createElement('canvas');
                         c.width = Math.round(img.width * k);
                         c.height = Math.round(img.height * k);
@@ -2377,154 +2749,191 @@
                         ctx.drawImage(img, 0, 0, c.width, c.height);
                         URL.revokeObjectURL(url);
                         const dataUrl = c.toDataURL('image/jpeg', 0.85);
-                        resolve({
-                            preview: dataUrl,
-                            data: dataUrl.split(',')[1],
-                            mime: 'image/jpeg',
-                            name: file.name.replace(/\.[^.]+$/, '') + '.jpg'
-                        });
+                        resolve({ preview: dataUrl, data: dataUrl.split(',')[1], mime: 'image/jpeg', name: file.name.replace(/\.[^.]+$/, '') + '.jpg' });
                     };
                     img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Не получилось открыть этот файл как картинку.')); };
                     img.src = url;
                 });
             }
 
-            async function saveQuestion() {
+            function readBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const r = new FileReader();
+                    r.onload = () => resolve(String(r.result).split(',')[1]);
+                    r.onerror = () => reject(new Error('Не удалось прочитать файл.'));
+                    r.readAsDataURL(file);
+                });
+            }
+
+            const AUDIO_MIME = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', ogg: 'audio/ogg', oga: 'audio/ogg', wav: 'audio/wav', webm: 'audio/webm' };
+            function audioMime(file) {
+                if (file.type && /^audio\//.test(file.type)) return file.type;
+                return AUDIO_MIME[(file.name.split('.').pop() || '').toLowerCase()] || '';
+            }
+
+            async function saveForm(btn) {
                 collectForm();
-                const q = {
-                    test: ed.test.trim(),
-                    minutes: Number(ed.minutes) || 0,
-                    type: ed.type,
-                    text: ed.text.trim(),
-                    explain: ed.explain.trim()
-                };
+                const f = form;
+                const q = { type: f.type, text: f.text.trim(), explain: f.explain.trim(), audioTitle: f.audioTitle.trim() };
                 let err = '';
-                if (!q.test) err = 'Укажите название теста.';
-                else if (!q.text) err = 'Введите текст вопроса.';
-                else if (q.type === 'text') {
-                    q.answers = ed.textAns.split(';').map(s => s.trim()).filter(Boolean);
+                if (!q.text) err = 'Введите текст вопроса.';
+                else if (f.type === 'text') {
+                    q.answers = f.textAns.split(';').map(s => s.trim()).filter(Boolean);
                     if (!q.answers.length) err = 'Впишите хотя бы один правильный ответ.';
                 } else {
-                    const opts = ed.options.map((t, i) => ({ t: t.trim(), ok: ed.correct.includes(i) })).filter(o => o.t);
+                    const opts = f.options.map((t, i) => ({ t: t.trim(), ok: f.correct.includes(i) })).filter(o => o.t);
                     q.options = opts.map(o => o.t);
                     q.correct = opts.map((o, i) => o.ok ? i : -1).filter(i => i >= 0);
                     if (opts.length < 2) err = 'Нужно минимум два заполненных варианта.';
                     else if (!q.correct.length) err = 'Отметьте правильный вариант.';
                 }
-                if (err) return setMsg(err, true);
-                if (ed.image) q.image = { data: ed.image.data, mime: ed.image.mime, name: ed.image.name };
+                if (!err && !f.audioFile && f.audioUrl && !validAudioUrl(f.audioUrl)) err = 'Ссылка на аудио должна начинаться с https:// или быть путём вроде music/1.mp3.';
+                if (err) return setMsg('fMsg', err, true);
 
-                const btn = root.querySelector('#edSave');
-                btn.disabled = true;
-                btn.textContent = 'Сохраняем…';
-                setMsg('');
+                if (!f.id) { q.test = editor.title; q.minutes = editor.minutes; }
+                if (f.imageChanged) q.image = f.image && f.image.data ? { data: f.image.data, mime: f.image.mime, name: f.image.name } : null;
+
+                if (!lock(btn, f.audioFile ? 'Загружаем аудио…' : 'Сохраняем…')) return;
+                setMsg('fMsg', f.audioFile ? 'Аудио загружается на Google Диск — это может занять до минуты.' : '');
                 try {
-                    await api('addQuestion', { question: q });
-                    ed = freshDraft(ed);
-                    await loadRemote();
-                    renderEditor(`Вопрос добавлен в тест «${q.test}».`);
+                    q.audio = f.audioFile
+                        ? { data: await readBase64(f.audioFile), mime: audioMime(f.audioFile), name: f.audioFile.name }
+                        : f.audioUrl;
+                    await api(f.id ? 'updateQuestion' : 'addQuestion', f.id ? { id: f.id, question: q } : { question: q }, f.audioFile ? 180000 : 60000);
+                    busy = false;
+                    loadCatalog();
+                    await openTestEditor(editor.title, f.id ? 'Вопрос сохранён.' : 'Вопрос добавлен.');
                 } catch (e) {
-                    setMsg(e.message, true);
-                    btn.disabled = false;
-                    btn.textContent = 'Сохранить вопрос';
+                    setMsg('fMsg', e.message, true);
+                } finally {
+                    unlock(btn);
                 }
             }
 
-            async function deleteQuestion(id) {
-                const row = remote.rows.find(r => r.id === id);
-                if (!row || !confirm(`Удалить вопрос «${row.text.slice(0, 80)}»?`)) return;
-                collectForm();
-                try {
-                    await api('deleteQuestion', { id });
-                    await loadRemote();
-                    renderEditor('Вопрос удалён.');
-                } catch (e) {
-                    setMsg(e.message, true);
-                }
-            }
 
-            // ----- События -----
+            // ===== События =====
             root.addEventListener('click', e => {
                 const btn = e.target.closest('[data-action]');
-                if (!btn) return;
-                const action = btn.dataset.action;
-                if (action === 'start') start(Number(btn.dataset.test));
-                else if (action === 'next') goTo(state.current + 1);
-                else if (action === 'prev') goTo(state.current - 1);
-                else if (action === 'goto') goTo(Number(btn.dataset.q));
-                else if (action === 'finish') askFinish();
-                else if (action === 'restart') start(state.testIndex);
-                else if (action === 'list') { state = null; renderList(); }
-                else if (action === 'reload') loadRemote();
-                else if (action === 'new') { ed = null; renderEditor(); }
-                else if (action === 'save-q') saveQuestion();
-                else if (action === 'delete-q') deleteQuestion(btn.dataset.id);
-                else if (action === 'add-option') {
+                if (!btn || btn.disabled) return;
+                const a = btn.dataset.action;
+                const test = () => catalog.tests[Number(btn.dataset.test)];
+
+                if (a === 'start') { const t = test(); if (t) start(t.title, btn); }
+                else if (a === 'next') goTo(state.current + 1);
+                else if (a === 'prev') goTo(state.current - 1);
+                else if (a === 'goto') goTo(Number(btn.dataset.q));
+                else if (a === 'finish') askFinish();
+                else if (a === 'retry-submit') finish(state.timeUp);
+                else if (a === 'restart') start(state.title, btn);
+                else if (a === 'list') { stopTimer(); showList(); }
+                else if (a === 'reload') loadCatalog();
+                else if (a === 'resume') resume();
+                else if (a === 'drop-pending') confirmBox('Сбросить незавершённый тест?', 'Ответы не будут отправлены.', 'Сбросить', () => { clearPending(); renderList(); });
+
+                else if (a === 'results') openResults();
+                else if (a === 'new-test') { editor = { title: '', minutes: 10, questions: [], isNew: true }; renderTestEditor(); }
+                else if (a === 'edit-test') { const t = test(); if (t) openTestEditor(t.title); }
+                else if (a === 'save-test') saveTest(btn);
+                else if (a === 'delete-test') deleteTest();
+                else if (a === 'move-q') moveQuestion(btn.dataset.id, Number(btn.dataset.dir));
+                else if (a === 'del-q') deleteQuestion(btn.dataset.id);
+                else if (a === 'edit-q') openForm(editor.questions.find(q => q.id === btn.dataset.id));
+                else if (a === 'new-q') openForm(null);
+
+                else if (a === 'back-to-test') {
+                    if (previewUrl) { URL.revokeObjectURL(previewUrl); previewUrl = null; }
+                    if (editor.isNew && !editor.questions.length) renderTestEditor();
+                    else openTestEditor(editor.title);
+                }
+                else if (a === 'save-q') saveForm(btn);
+                else if (a === 'add-option') {
                     collectForm();
-                    ed.options.push('');
+                    form.options.push('');
                     renderOptions();
                     [...root.querySelectorAll('.ed-opt__text')].pop().focus();
                 }
-                else if (action === 'del-option') {
+                else if (a === 'del-option') {
                     collectForm();
                     const i = Number(btn.dataset.i);
-                    ed.options.splice(i, 1);
-                    ed.correct = ed.correct.filter(c => c !== i).map(c => c > i ? c - 1 : c);
+                    form.options.splice(i, 1);
+                    form.correct = form.correct.filter(c => c !== i).map(c => c > i ? c - 1 : c);
                     renderOptions();
                 }
-                else if (action === 'clear-image') {
-                    ed.image = null;
-                    root.querySelector('#edImage').value = '';
-                    root.querySelector('#edPreview').hidden = true;
-                    btn.hidden = true;
+                else if (a === 'clear-image') {
+                    collectForm();
+                    form.image = null;
+                    form.imageChanged = true;
+                    renderForm();
+                }
+                else if (a === 'clear-audio-file') {
+                    collectForm();
+                    form.audioFile = null;
+                    renderForm();
                 }
             });
+
             root.addEventListener('change', e => {
                 const t = e.target;
                 if (t.name === 'answer') saveAnswer(t);
-                else if (t.name === 'edType') {
+                else if (t.name === 'fType') {
                     collectForm();
-                    ed.type = t.value;
-                    if (ed.type === 'single') ed.correct = ed.correct.slice(0, 1);
-                    root.querySelector('#edOptionsWrap').hidden = ed.type === 'text';
-                    root.querySelector('#edTextWrap').hidden = ed.type !== 'text';
-                    if (ed.type !== 'text') renderOptions();
+                    form.type = t.value;
+                    if (form.type === 'single') form.correct = form.correct.slice(0, 1);
+                    root.querySelector('#fOptionsWrap').hidden = form.type === 'text';
+                    root.querySelector('#fTextWrap').hidden = form.type !== 'text';
+                    if (form.type !== 'text') renderOptions();
                 }
-                else if (t.id === 'edImage' && t.files[0]) {
+                else if (t.id === 'fImage' && t.files[0]) {
                     readImage(t.files[0]).then(img => {
-                        ed.image = img;
-                        const p = root.querySelector('#edPreview');
-                        p.src = img.preview;
-                        p.hidden = false;
-                        root.querySelector('[data-action="clear-image"]').hidden = false;
-                        setMsg('');
-                    }).catch(err => { t.value = ''; setMsg(err.message, true); });
+                        collectForm();
+                        form.image = img;
+                        form.imageChanged = true;
+                        renderForm();
+                    }).catch(err => { t.value = ''; setMsg('fMsg', err.message, true); });
                 }
+                else if (t.id === 'fAudioFile' && t.files[0]) {
+                    const file = t.files[0];
+                    collectForm();
+                    if (!audioMime(file)) return setMsg('fMsg', 'Это не аудиофайл.', true);
+                    if (file.size > AUDIO_MAX_MB * 1048576) return setMsg('fMsg', `Файл больше ${AUDIO_MAX_MB} МБ. Сожмите его или положите в папку music сайта.`, true);
+                    form.audioFile = file;
+                    if (!form.audioTitle) form.audioTitle = file.name.replace(/\.[^.]+$/, '').replace(/[_-]+/g, ' ');
+                    renderForm();
+                }
+                else if (t.id === 'fAudioUrl' || t.id === 'fAudioTitle') {
+                    collectForm();
+                    renderAudioPreview();
+                }
+                else if (t.id === 'resTest') { results.test = t.value; renderResultsTable(); }
             });
+
             root.addEventListener('input', e => {
                 if (e.target.classList.contains('text-answer')) saveAnswer(e.target);
+                else if (e.target.id === 'resQuery') { results.query = e.target.value; renderResultsTable(); }
             });
+
             root.addEventListener('keydown', e => {
                 // Enter в поле ответа — к следующему вопросу
                 if (e.key === 'Enter' && e.target.classList.contains('text-answer')) {
-                    const last = state.current === state.test.questions.length - 1;
+                    e.preventDefault();
+                    const last = state.current === state.questions.length - 1;
                     last ? askFinish() : goTo(state.current + 1);
                 }
             });
 
-            renderList();
-
             return {
+                loadCatalog,
                 renderList,
-                loadRemote,
-                // При выходе: остановить таймер, забыть вопросы из таблицы, вернуться к списку
+                best: () => catalog,
+                // При выходе: остановить таймер, забыть данные прошлого пользователя
                 reset() {
                     stopTimer();
                     state = null;
-                    ed = null;
-                    remote.rows = [];
-                    remote.status = 'idle';
-                    TESTS = BUILTIN_TESTS.slice();
+                    editor = null;
+                    form = null;
+                    busy = false;
+                    results = { rows: [], test: '', query: '' };
+                    catalog = { status: 'idle', error: '', tests: [], best: {} };
                     renderList();
                 }
             };
@@ -2534,31 +2943,49 @@
         // =====================================================
         // 4. ВХОД, РОЛИ, ЛИЧНЫЙ КАБИНЕТ, ТЕМА
         // =====================================================
-        // Сессия: { login, role, token }. Токен выдаёт Apps Script при входе,
-        // и все запросы к таблице проверяются по нему на сервере.
+        // Сессия: { token, user: { login, name, role } }. Токен выдаёт сервер,
+        // роль здесь — только для интерфейса: права проверяются на сервере.
         function session() {
-            try { return JSON.parse(localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || 'null'); }
-            catch (e) { return null; }
+            try {
+                const s = JSON.parse(localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || 'null');
+                return s && s.token && s.user ? s : null;
+            } catch (e) { return null; }
         }
-        function currentUser() { const s = session(); return s ? s.login : ''; }
-        function currentRole() { const s = session(); return s && ROLES[s.role] ? s.role : 'user'; }
-        function bestKey() { return 'mxk-best:' + currentUser(); }
-        function loadBest() {
-            try { return JSON.parse(localStorage.getItem(bestKey()) || '{}'); } catch (e) { return {}; }
+        function currentUser() { const s = session(); return s ? s.user.login : ''; }
+        function currentName() { const s = session(); return s ? (s.user.name || s.user.login) : ''; }
+        function currentRole() { const s = session(); return s && ROLES[s.user.role] ? s.user.role : 'user'; }
+        function canEdit() { return currentRole() === 'editor' || currentRole() === 'root'; }
+
+        // Сервер прислал свежие имя и роль (их могли поменять в таблице)
+        function updateSessionUser(user) {
+            const s = session();
+            if (!s || !user) return;
+            s.user = user;
+            try {
+                (localStorage.getItem(SESSION_KEY) ? localStorage : sessionStorage).setItem(SESSION_KEY, JSON.stringify(s));
+            } catch (e) {}
+            applyUser();
         }
 
-        // Запрос к Apps Script. POST с text/plain — так браузер не делает лишний CORS-запрос
-        async function api(action, data = {}) {
+        // Запрос к Apps Script. POST с text/plain — без лишнего CORS-запроса;
+        // пароль и токен идут в теле запроса, а не в адресе.
+        async function api(action, data = {}, timeoutMs = 60000) {
             const s = session();
+            const ctrl = new AbortController();
+            const timer = setTimeout(() => ctrl.abort(), timeoutMs);
             let res;
             try {
                 res = await fetch(API_URL, {
                     method: 'POST',
                     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ action, token: s ? s.token : '', ...data })
+                    body: JSON.stringify({ ...data, action, token: s ? s.token : '' }),
+                    signal: ctrl.signal,
+                    credentials: 'omit'
                 });
             } catch (e) {
-                throw new Error('Нет связи с сервером. Проверьте интернет.');
+                throw new Error(e.name === 'AbortError' ? 'Сервер слишком долго не отвечает. Попробуйте ещё раз.' : 'Нет связи с сервером. Проверьте интернет.');
+            } finally {
+                clearTimeout(timer);
             }
             let out;
             try { out = await res.json(); }
@@ -2571,34 +2998,42 @@
             return out;
         }
 
-        // Подставляет логин и роль во все места с data-user-*
+        // Подставляет имя, логин и роль во все места с data-user-*
         function applyUser() {
-            const name = currentUser();
+            const name = currentName();
             document.querySelectorAll('[data-user-name]').forEach(el => { el.textContent = name; });
-            document.querySelectorAll('[data-user-initial]').forEach(el => { el.textContent = (name[0] || '?').toUpperCase(); });
+            document.querySelectorAll('[data-user-login]').forEach(el => { el.textContent = currentUser(); });
+            document.querySelectorAll('[data-user-initial]').forEach(el => { el.textContent = (name.trim()[0] || '?').toUpperCase(); });
             document.querySelectorAll('[data-user-role]').forEach(el => { el.textContent = ROLES[currentRole()]; });
-            document.documentElement.dataset.role = currentRole();
         }
 
         function renderCabinet() {
             const box = document.getElementById('myResults');
-            const best = loadBest();
-            const done = TESTS.filter(t => best[t.title]);
+            const { status, tests, best } = testApp.best();
+            const done = tests.filter(t => best[t.title]);
+            box.textContent = '';
+            if (status === 'loading' && !tests.length) {
+                box.innerHTML = '<p class="stats-empty">Загружаем…</p>';
+                return;
+            }
             if (!done.length) {
                 box.innerHTML = '<p class="stats-empty">Пока нет пройденных тестов. <a href="#" data-page="test">Перейти к тестам</a></p>';
                 return;
             }
-            box.innerHTML = '<ul class="stats"></ul>';
-            const list = box.firstChild;
+            const list = document.createElement('ul');
+            list.className = 'stats';
             done.forEach(t => {
+                const b = best[t.title];
                 const li = document.createElement('li');
                 const title = document.createElement('span');
                 title.textContent = t.title;
                 const score = document.createElement('b');
-                score.textContent = `${best[t.title].score} из ${best[t.title].total}`;
+                score.textContent = `${b.score} из ${b.total}`;
+                score.title = `Попыток: ${b.attempts}`;
                 li.append(title, score);
                 list.appendChild(li);
             });
+            box.appendChild(list);
         }
 
         // ----- Вход -----
@@ -2610,6 +3045,7 @@
 
         loginForm.addEventListener('submit', async e => {
             e.preventDefault();
+            if (loginBtn.disabled) return;
             const login = document.getElementById('loginInput').value.trim();
             const password = document.getElementById('passInput').value;
             const remember = document.getElementById('rememberInput').checked;
@@ -2621,7 +3057,7 @@
             loginBtn.textContent = 'Проверяем…';
             try {
                 const out = await api('login', { login, password });
-                const data = JSON.stringify({ login: out.login, role: out.role, token: out.token });
+                const data = JSON.stringify({ token: out.token, user: out.user });
                 try { (remember ? localStorage : sessionStorage).setItem(SESSION_KEY, data); }
                 catch (err) { return showError('Браузер не даёт сохранить вход. Разрешите сайту хранить данные.'); }
 
@@ -2630,7 +3066,7 @@
                 applyUser();
                 testApp.reset();
                 initRouter();
-                testApp.loadRemote();
+                testApp.loadCatalog();
             } catch (err) {
                 showError(err.message);
             } finally {
@@ -2655,6 +3091,34 @@
             endSession();
         });
 
+        // ----- Смена пароля -----
+        document.getElementById('pwForm').addEventListener('submit', async e => {
+            e.preventDefault();
+            const f = e.target;
+            const msg = document.getElementById('pwMsg');
+            const btn = f.querySelector('button[type="submit"]');
+            const oldPassword = f.pwOld.value;
+            const newPassword = f.pwNew.value;
+            const show = (text, isError) => { msg.textContent = text; msg.className = 'ed-msg ' + (isError ? 'is-error' : 'is-ok'); };
+
+            if (!oldPassword || !newPassword) return show('Заполните все поля.', true);
+            if (newPassword.length < 6) return show('Новый пароль — минимум 6 символов.', true);
+            if (newPassword !== f.pwNew2.value) return show('Новые пароли не совпадают.', true);
+            if (btn.disabled) return;
+
+            btn.disabled = true;
+            show('');
+            try {
+                await api('changePassword', { oldPassword, newPassword });
+                f.reset();
+                show('Пароль изменён.');
+            } catch (err) {
+                show(err.message, true);
+            } finally {
+                btn.disabled = false;
+            }
+        });
+
         // ----- Тема -----
         function applyTheme(theme) {
             const root = document.documentElement;
@@ -2672,9 +3136,14 @@
                 r.addEventListener('change', () => applyTheme(r.value)));
         })();
 
-        try { localStorage.removeItem('mxk-user'); } catch (e) {} // ключ от старой версии сайта
+        // Уборка ключей от прошлых версий сайта
+        try {
+            ['mxk-user', 'mxk-session'].forEach(k => { localStorage.removeItem(k); sessionStorage.removeItem(k); });
+            Object.keys(localStorage).filter(k => k.indexOf('mxk-best:') === 0).forEach(k => localStorage.removeItem(k));
+        } catch (e) {}
+
         applyUser();
-        if (currentUser()) testApp.loadRemote();
+        if (currentUser()) testApp.loadCatalog();
     </script>
 </body>
 </html>
